@@ -61,6 +61,7 @@ body{background:radial-gradient(120% 90% at 50% 40%,var(--bg2) 0%,var(--bg) 70%)
 #intro p b{color:var(--ink)}
 #enter{align-self:flex-start;appearance:none;border:0;border-radius:999px;background:var(--accent);color:#fff;font:500 14px var(--f-body);padding:12px 26px;cursor:pointer;box-shadow:0 8px 22px rgba(59,48,201,.28)}
 #enter:hover{background:#2f25b0}
+#glnote{position:absolute;z-index:6;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(560px,calc(100% - 32px));background:#fff4e5;border:1px solid #e9b96a;color:#5c3b06;font-size:13px;line-height:1.5;padding:12px 14px}
 #intro .foot{position:absolute;left:max(16px,14vw);bottom:calc(28px + env(safe-area-inset-bottom,0px));font-size:11px;color:var(--ink2)}
 #intro[hidden]{display:none}
 
@@ -153,6 +154,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <div id="app">
   <canvas id="c" aria-label="Makieta miasta z siecią 5G: wieże, użytkownicy, edge site i core"></canvas>
   <div id="ov"></div>
+  <div id="glnote" role="alert" hidden></div>
 
   <section id="intro">
     <div class="wm">AR Telecom Table · v2</div>
@@ -208,6 +210,11 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   </footer>
 </div>
 
+<script>
+// Show any startup problem on the page instead of failing silently
+function showNote(html){var n=document.getElementById('glnote');if(!n)return;n.innerHTML=html;n.hidden=false;}
+window.addEventListener('error',function(e){showNote('Something stopped the page from starting: <code>'+String(e.message||e).replace(/</g,'&lt;')+'</code><br>Please send this message to the person who shared the link.');});
+</script>
 <script>
 /**
  * @license
@@ -297,7 +304,14 @@ const reduceMotion=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduc
 
 /* =================== Three.js setup =================== */
 const canvas=document.getElementById('c');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+let renderer;
+try{
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+}catch(err){
+  // No WebGL (e.g. graphics acceleration disabled): keep the UI and narration working without the 3D layer
+  renderer={setPixelRatio(){},setClearColor(){},setSize(){},render(){}};
+  showNote('3D graphics are blocked in this browser, so the table is not drawn. Scenes and narration still work.<br><b>Edge / Chrome:</b> Settings → System → turn on “Use graphics acceleration”, then restart the browser.');
+}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
 renderer.setClearColor(0x000000,0);
 const scene=new THREE.Scene();
