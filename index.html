@@ -411,8 +411,14 @@ function get(id,make){return pool[id]||(pool[id]=register(make()));}
 
 function dline(id,pts,color,a=1,dashed=true){
   const l=get(id,()=>lineObj(pts,color,dashed?.9:.8,dashed));
-  l.geometry.setFromPoints(pts); if(dashed) l.computeLineDistances();
-  l.geometry.attributes.position.needsUpdate=true; l.geometry.computeBoundingSphere();
+  // update buffers in place: allocating new attributes every frame leaks GPU buffers
+  const geo=l.geometry, pos=geo.attributes.position;
+  if(pos.count!==pts.length){geo.dispose();l.geometry=new THREE.BufferGeometry().setFromPoints(pts);if(dashed)l.computeLineDistances();return want(l,a);}
+  let d=0;
+  const ld=geo.attributes.lineDistance;
+  pts.forEach((p,i)=>{pos.setXYZ(i,p.x,p.y,p.z);if(ld){if(i>0)d+=p.distanceTo(pts[i-1]);ld.setX(i,d);}});
+  pos.needsUpdate=true; if(ld) ld.needsUpdate=true;
+  geo.computeBoundingSphere();
   return want(l,a);
 }
 const coneGeo=new THREE.ConeGeometry(1,1,28,1,true); coneGeo.translate(0,-.5,0);
